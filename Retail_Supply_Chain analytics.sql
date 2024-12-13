@@ -1,0 +1,127 @@
+SELECT * FROM retail_supply_chain.orderitems;
+/***************************************************************************************************
+Question 1: Design a table that calculates the total sales and quantity of products purchased by each customer, 
+along with the percentage contribution of each customer's sales to the overall total.*/ 
+
+WITH CTE1 AS (
+With CTE as (
+Select A2.OrderItemID, A1.ORDERID, A2.PRODUCTID, A2.QUANTITY, A2.PRICE, A1.ORDERDATE, A1.CustomerName, A1.CustomerAddress
+from retail_supply_chain.orderitems as A2
+join retail_supply_chain.orders as A1
+on A2.OrderID=A1.OrderID )
+
+Select ORDERID, CUSTOMERNAME, SUM(QUANTITY) AS TOTAL_QUANTITY, SUM(PRICE) AS TOTAL_SALES
+From CTE 
+GROUP BY ORDERID, CUSTOMERNAME
+ORDER BY TOTAL_SALES DESC )
+
+SELECT ORDERID, CUSTOMERNAME, TOTAL_QUANTITY,TOTAL_SALES, ROUND((TOTAL_SALES / SUM(TOTAL_SALES) OVER ()) * 100, 1) AS Sales_Percentage
+FROM CTE1
+group by ORDERID, CUSTOMERNAME
+
+/***************************************************************************************************
+Question 2: Create a table calculating total sales, product quantities by product ID, and the percentage of sales for each customer.*/
+ 
+USE RETAIL_SUPPLY_CHAIN; 
+WITH CTE2 AS(
+WITH CTE1 AS ( 
+WITH CTE AS (
+SELECT A1.PRODUCTID, A1.NAME, A1.CATEGORY, A1.PRICE,A2.QUANTITY,A2.PRICE AS SALES 
+FROM PRODUCTS AS A1
+JOIN ORDERITEMS AS A2
+ON A1.PRODUCTID=A2.PRODUCTID )
+
+SELECT CATEGORY, NAME, SUM(SALES) AS TOTAL_SALES, SUM(QUANTITY) AS TOTAL_QUANTITY
+FROM CTE
+GROUP BY CATEGORY, NAME
+ORDER BY CATEGORY, TOTAL_SALES DESC )
+
+SELECT CATEGORY, NAME, TOTAL_SALES, TOTAL_QUANTITY, ROUND( (TOTAL_SALES/SUM(TOTAL_SALES) OVER())*100,1) AS SALES_PERCENTAGE
+FROM CTE1
+ORDER BY SALES_PERCENTAGE DESC )
+
+
+SELECT CATEGORY, NAME, TOTAL_SALES, TOTAL_QUANTITY, SALES_PERCENTAGE ,
+CASE 
+WHEN SALES_PERCENTAGE > 9 THEN 'HIGH'
+WHEN SALES_PERCENTAGE < 3 THEN 'LOW '
+ELSE 'AVERAGE'
+END AS 'SALES TYPE'
+FROM CTE2
+ORDER BY SALES_PERCENTAGE DESC 
+/***************************************************************************************************
+Question 3: Create a table calculating the percentage of warehouse capacity utilization. */
+USE retail_supply_chain ;
+WITH CTE1 AS (
+WITH CTE AS (
+Select A1.WAREHOUSEID, A1.PRODUCTID, A1.QUANTITY,A2.LOCATION, A2.CAPACITY 
+From STOCK as A1
+join WAREHOUSES as A2
+on A1.WAREHOUSEID=A2.WAREHOUSEID )
+
+SELECT WAREHOUSEID, LOCATION, CAPACITY, SUM(QUANTITY) AS TOTAL_QUANTITY
+FROM CTE
+GROUP BY WAREHOUSEID, LOCATION, CAPACITY )
+
+SELECT WAREHOUSEID, LOCATION, CAPACITY, TOTAL_QUANTITY, ROUND((TOTAL_QUANTITY/CAPACITY)*100,1) AS CAPACITY_RATE 
+FROM CTE1
+ORDER BY CAPACITY_RATE DESC 
+
+ /***************************************************************************************************
+Question 4: Create a table calculating the percentage of supplier shipment order rates */
+USE retail_supply_chain ;
+WITH CTE3 AS (
+WITH CTE2 AS (
+WITH CTE1 AS (
+WITH CTE AS (
+select shipmentID, sum(quantity) as total_quantity
+from shipmentitems 
+group by shipmentID )
+
+SELECT A1.SHIPMENTID, A2.SUPPLIERID, A2.WAREHOUSEID, A2.SHIPMENTDATE, A1.TOTAL_QUANTITY
+FROM CTE AS A1
+JOIN SHIPMENTS AS A2
+ON A1.SHIPMENTID=A2.SHIPMENTID )
+
+SELECT SUPPLIERID, SUM(TOTAL_QUANTITY) AS TOTAL_QUANTITY1
+FROM CTE1
+GROUP BY SUPPLIERID )
+
+SELECT A2.SUPPLIERID, A2.NAME, A2.CONTACTNAME, A1.TOTAL_QUANTITY1
+FROM CTE2 AS A1
+JOIN SUPPLIERS AS A2
+ON A1.SUPPLIERID= A2.SUPPLIERID )
+
+SELECT SUPPLIERID, NAME, CONTACTNAME, TOTAL_QUANTITY1, ROUND((TOTAL_QUANTITY1/SUM(TOTAL_QUANTITY1) OVER ())*100,1) AS PERCENTAGE
+FROM CTE3 
+ORDER BY PERCENTAGE DESC 
+
+ /***************************************************************************************************
+Question 5: Create a table calculating the percentage of warehouse shipment order rates. */
+
+USE retail_supply_chain ;
+WITH CTE3 AS (
+WITH CTE2 AS (
+WITH CTE1 AS (
+WITH CTE AS (
+select shipmentID, sum(quantity) as total_quantity
+from shipmentitems 
+group by shipmentID )
+
+SELECT A1.SHIPMENTID, A2.SUPPLIERID, A2.WAREHOUSEID, A2.SHIPMENTDATE, A1.TOTAL_QUANTITY
+FROM CTE AS A1
+JOIN SHIPMENTS AS A2
+ON A1.SHIPMENTID=A2.SHIPMENTID )
+
+SELECT WAREHOUSEID, SUM(TOTAL_QUANTITY) AS TOTAL_QUANTITY1
+FROM CTE1
+GROUP BY WAREHOUSEID )
+
+SELECT A2.WAREHOUSEID, A2.LOCATION, A1.TOTAL_QUANTITY1
+FROM CTE2 AS A1
+JOIN WAREHOUSES AS A2
+ON A1.WAREHOUSEID= A2.WAREHOUSEID )
+
+SELECT WAREHOUSEID, LOCATION, TOTAL_QUANTITY1, ROUND((TOTAL_QUANTITY1/SUM(TOTAL_QUANTITY1) OVER ())*100,1) AS PERCENTAGE
+FROM CTE3 
+ORDER BY PERCENTAGE DESC 
